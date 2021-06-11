@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <omp.h>
 
@@ -36,6 +37,9 @@ short int calculate_highest_short(short int *linha, int tam) {
 float calculate_median_short(short int *linha, int tam) {
   float mediana;
 
+  short int *copy = (short int *) malloc(tam * sizeof(short int));
+  memcpy(copy, linha, tam * sizeof(short int));
+
   qsort(linha, tam, sizeof(short int), compare_short);
 
   if (tam % 2) {
@@ -43,6 +47,7 @@ float calculate_median_short(short int *linha, int tam) {
   } else {
     mediana = (linha[tam / 2 - 1] + linha[tam / 2]) / 2;
   }
+  free(copy);
   return mediana;
 }
 
@@ -69,14 +74,17 @@ float calculate_standard_deviation_short(short int *linha, int tam) {
 
 float calculate_median_float(float *linha, int tam) {
   float mediana;
+  float *copy = (float *) malloc(tam * sizeof(float));
+  memcpy(copy, linha, tam * sizeof(float));
 
-  qsort(linha, tam, sizeof(short int), compare_short);
+  qsort(copy, tam, sizeof(short int), compare_short);
 
   if (tam % 2) {
     mediana = linha[(int) (tam / 2)];
   } else {
     mediana = (linha[tam / 2 - 1] + linha[tam / 2]) / 2;
   }
+  free(copy);
   return mediana;
 }
 
@@ -225,28 +233,18 @@ void pretty_print_output(
   short int country_lowest,
   float country_standard_deviation,
   double response_time
-
 ) {
   float best_region[2], best_city[3]; // value = 0, region = 1, city = 2;
-  for (
-    int i = 0;
-    i < size_regions;
-    i++) {
+  for (int i = 0; i < size_regions; i++) {
     if (region_mean[i] > best_region[0]) {
       best_region[0] = region_mean[i];
-      best_region[1] = (float)
-        i;
+      best_region[1] = (float) i;
     }
-    for (
-      int j = 0;
-      j < size_cities;
-      j++) {
+    for (int j = 0; j < size_cities; j++) {
       if (city_mean[i][j] > best_city[0]) {
         best_city[0] = city_mean[i][j];
-        best_city[1] = (float)
-          i;
-        best_city[2] = (float)
-          j;
+        best_city[1] = (float) i;
+        best_city[2] = (float) j;
       }
       printf("Reg %d - Cid %d: menor: %d, maior: %d, mediana: %.2f, média: %.2f e DP: %.2f\n", i, j, city_lowest[i][j],
              city_highest[i][j], city_median[i][j], city_mean[i][j], city_standard_deviation[i][j]);

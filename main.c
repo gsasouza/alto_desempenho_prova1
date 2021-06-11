@@ -251,7 +251,7 @@ int main(int argc, char* const argv[]) {
   for (int i = 0; i < size_regions; i++) {
     for (int j = 0; j < size_cities; j++) {
       for (int k = 0; k < size_students; k++) {
-        students_grade[calculate_index(i, j, k, size_regions, size_cities, size_students)] = rand() % 100;
+        students_grade[calculate_index(i, j, k, size_regions, size_cities, size_students)] = rand() % 101;
       }
     }
   }

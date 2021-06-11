@@ -1,126 +1,83 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
 #include <omp.h>
 
+
+int calculate_index(int i, int j, int k, int size_i, int size_j, int size_k) {
+  return (size_j * size_k * i) + (size_k * j) + k;
+}
+
+int calculate_region_size(int size_city, int size_students) {
+  return size_city * size_students;
+}
+
+int calculate_country_size(int size_region, int size_city, int size_students) {
+  return size_region * size_city * size_students;
+}
+
 int compare_short(const void *a, const void *b) {
-  short int int_a = *((short int *) a);
-  short int int_b = *((short int *) b);
-
-  if (int_a == int_b) return 0;
-  else if (int_a < int_b) return -1;
-  else return 1;
+  return *((short int *) a) - *((short int *) b);
 }
 
-short int calculate_lowest_short(short int *linha, int tam) {
-  short int menor = 101;
-  for (int i = 0; i < tam; i++) {
-    if (linha[i] < menor) {
-      menor = linha[i];
-    }
-  }
-  return menor;
+void sort_short(short int *start_pointer, int start, int size) {
+  qsort(start_pointer + start, size, sizeof(short int), compare_short);
 }
 
-
-short int calculate_highest_short(short int *linha, int tam) {
-  short int maior = -1;
-  for (int i = 0; i < tam; i++) {
-    if (linha[i] > maior) {
-      maior = linha[i];
-    }
-  }
-  return maior;
+short int calculate_lowest_short(short int *array, int start) {
+  return array[start];
 }
 
-float calculate_median_short(short int *linha, int tam) {
-  float mediana;
-
-  short int *copy = (short int *) malloc(tam * sizeof(short int));
-  memcpy(copy, linha, tam * sizeof(short int));
-
-  qsort(linha, tam, sizeof(short int), compare_short);
-
-  if (tam % 2) {
-    mediana = linha[(int) (tam / 2)];
-  } else {
-    mediana = (linha[tam / 2 - 1] + linha[tam / 2]) / 2;
-  }
-  free(copy);
-  return mediana;
+short int calculate_highest_short(short int *array, int start, int size) {
+  return array[start + size - 1];
 }
 
-float calculate_mean_short(short int *linha, int tam) {
-  int total = 0;
-  for (int i = 0; i < tam; i++) {
-    total += linha[i];
+float calculate_median_short(short int *array, int start, int size) {
+  int half = size / 2;
+  if (size % 2) return array[start + half];
+  return (float) (array[start + half - 1] + array[start + half]) / 2;
+}
+
+float calculate_mean_short(const short int *array, int start, int size) {
+  int sum = 0;
+  for (int i = start; i < start + size; i++) {
+    sum += array[i];
   }
-  return (float) total / (float) tam;
+  return (float) sum / (float) size;
 }
 
 // standard deviation
-float calculate_standard_deviation_short(short int *linha, int tam) {
-  float media, dp = 0.0;
-  int i;
-
-  media = calculate_mean_short(linha, tam);
-
-  for (i = 0; i < tam; ++i) {
-    dp += pow(linha[i] - media, 2);
+float calculate_standard_deviation_short(short int *array, int start, int size, float mean) {
+  float dp = (float) 0.0;
+  for (int i = start; i < start + size; ++i) {
+    dp += pow(array[i] - mean, 2);
   }
-  return sqrt(dp / (float) tam);
+  return sqrt(dp / (float) size);
 }
 
-float calculate_median_float(float *linha, int tam) {
-  float mediana;
-  float *copy = (float *) malloc(tam * sizeof(float));
-  memcpy(copy, linha, tam * sizeof(float));
-
-  qsort(copy, tam, sizeof(short int), compare_short);
-
-  if (tam % 2) {
-    mediana = linha[(int) (tam / 2)];
-  } else {
-    mediana = (linha[tam / 2 - 1] + linha[tam / 2]) / 2;
-  }
-  free(copy);
-  return mediana;
-}
-
-float calculate_mean_float(float *linha, int tam) {
-  float total = 0;
-  for (int i = 0; i < tam; i++) {
-    total += linha[i];
-  }
-  return (float) total / (float) tam;
-}
-
-// standard deviation
-float calculate_standard_deviation_float(float *linha, int tam) {
-  float media, dp = 0.0;
-  int i;
-
-  media = calculate_mean_float(linha, tam);
-
-  for (i = 0; i < tam; ++i) {
-    dp += pow(linha[i] - media, 2);
-  }
-  return sqrt(dp / (float) tam);
-}
-
-void calculate_city_stats(int size_regions, int size_cities, int size_students, short int ***students_grade,
-                          float **city_median,
-                          float **city_mean,
-                          short int **city_highest, short int **city_lowest, float **city_standard_deviation) {
-
+void calculate_city_stats(
+  int size_regions,
+  int size_cities,
+  int size_students,
+  short int *students_grade,
+  float *city_median,
+  float *city_mean,
+  short int *city_highest,
+  short int *city_lowest,
+  float *city_standard_deviation
+) {
   for (int i = 0; i < size_regions; i++) {
     for (int j = 0; j < size_cities; j++) {
-      city_median[i][j] = calculate_median_short(students_grade[i][j], size_students);
-      city_mean[i][j] = calculate_mean_short(students_grade[i][j], size_students);
-      city_highest[i][j] = calculate_highest_short(students_grade[i][j], size_students);
-      city_lowest[i][j] = calculate_lowest_short(students_grade[i][j], size_students);
-      city_standard_deviation[i][j] = calculate_standard_deviation_short(students_grade[i][j], size_students);
+      int position = calculate_index(0, i, j, 0, size_regions, size_cities);
+      int city_start = calculate_index(i, j, 0, size_regions, size_cities, size_students);
+      sort_short(students_grade, city_start, size_students); // sort each array slice (city)
+      city_median[position] = calculate_median_short(students_grade, city_start, size_students);
+      city_mean[position] = calculate_mean_short(students_grade, city_start, size_students);
+      city_highest[position] = calculate_highest_short(students_grade, city_start, size_students);
+      city_lowest[position] = calculate_lowest_short(students_grade, city_start);
+      city_standard_deviation[position] = calculate_standard_deviation_short(students_grade, city_start,
+                                                                      size_students, city_mean[j]);
+
     }
   }
 }
@@ -128,11 +85,8 @@ void calculate_city_stats(int size_regions, int size_cities, int size_students, 
 void calculate_region_stats(
   int size_regions,
   int size_cities,
-  float **city_median,
-  float **city_mean,
-  short int **city_highest,
-  short int **city_lowest,
-  float **city_standard_deviation,
+  int size_students,
+  short int *students_grade,
   float *region_median,
   float *region_mean,
   short int *region_highest,
@@ -141,92 +95,53 @@ void calculate_region_stats(
 ) {
 
   for (int i = 0; i < size_regions; i++) {
-    region_median[i] = calculate_median_float(city_median[i], size_cities);
-    region_mean[i] = calculate_mean_float(city_mean[i], size_cities);
-    region_highest[i] = calculate_highest_short(city_highest[i], size_cities);
-    region_lowest[i] = calculate_lowest_short(city_lowest[i], size_cities);
-    region_standard_deviation[i] = calculate_standard_deviation_float(city_standard_deviation[i], size_cities);
+    int region_start = calculate_index(i, 0, 0, size_regions, size_cities, size_students);
+    int region_size = calculate_region_size(size_cities, size_students);
+    sort_short(students_grade, region_start, region_size); // sort array slice (region)
+    region_median[i] = calculate_median_short(students_grade, region_start, region_size);
+    region_mean[i] = calculate_mean_short(students_grade, region_start, region_size);
+    region_highest[i] = calculate_highest_short(students_grade, region_start, region_size);
+    region_lowest[i] = calculate_lowest_short(students_grade, region_start);
+    region_standard_deviation[i] = calculate_standard_deviation_short(students_grade, region_start,
+                                                                      region_size, region_mean[i]);
   }
 }
 
 void calculate_country_stats(
   int size_regions,
-  float *region_median,
-  float *region_mean,
-  short int *region_highest,
-  short int *region_lowest,
-  float *region_standard_deviation,
+  int size_cities,
+  int size_students,
+  short int *students_grade,
   float *country_median,
   float *country_mean,
   short int *country_highest,
   short int *country_lowest,
   float *country_standard_deviation
 ) {
-  *country_median = calculate_median_float(region_median, size_regions);
-  *country_mean = calculate_mean_float(region_mean, size_regions);
-  *country_highest = calculate_highest_short(region_highest, size_regions);
-  *country_lowest = calculate_lowest_short(region_lowest, size_regions);
-  *country_standard_deviation = calculate_standard_deviation_float(region_standard_deviation, size_regions);
-}
-
-short int ***allocate_3d_array(int size_x, int size_y, int size_z) {
-  short int ***array = (short int ***) malloc(sizeof(short int ***) * (size_x + 1));
-  for (int i = 0; i < size_x; i++) {
-    array[i] = (short int **) malloc(sizeof(short int **) * (size_y + 1));
-    for (int j = 0; j < size_y; j++) {
-      array[i][j] = (short int *) malloc(sizeof(short int) * (size_z + 1));
-    }
-  }
-  return array;
-}
-
-short int **allocate_2d_array(int size_x, int size_y) {
-  short int **array = (short int **) malloc(sizeof(short int *) * size_x);
-  for (int i = 0; i < size_x; i++) {
-    array[i] = (short int *) malloc(sizeof(short int) * size_y);
-
-  }
-  return array;
-}
-
-float **allocate_2d_array_float(int size_x, int size_y) {
-  float **array = (float **) malloc(sizeof(float *) * size_x);
-  for (int i = 0; i < size_x; i++) {
-    array[i] = (float *) malloc(sizeof(float) * size_y);
-
-  }
-  return array;
-}
-
-void print_int_matrix(short int **matrix, int size_x, int size_y) {
-  for (int i = 0; i < size_x; i++) {
-    printf("\nRegião %d\n", i);
-    for (int j = 0; j < size_y; j++) {
-      printf("%d ", matrix[i][j]);
-    }
-    printf("\n");
-  }
-}
-
-void print_float_matrix(float **matrix, int size_x, int size_y) {
-  for (int i = 0; i < size_x; i++) {
-    printf("\nRegião %d\n", i);
-    for (int j = 0; j < size_y; j++) {
-      printf("%.2f ", matrix[i][j]);
-    }
-    printf("\n");
-  }
+  int country_size = calculate_country_size(size_regions, size_cities, size_students);
+  sort_short(students_grade, 0, country_size); // sort array slice (country)
+  *country_median = calculate_median_short(students_grade, 0, country_size);
+  *country_mean = calculate_mean_short(students_grade, 0, country_size);
+  *country_highest = calculate_highest_short(students_grade, 0, country_size);
+  *country_lowest = calculate_lowest_short(students_grade, 0);
+  *country_standard_deviation = calculate_standard_deviation_short(students_grade, 0,
+                                                                   country_size, *country_mean);
 }
 
 void pretty_print_output(
   int size_regions,
   int size_cities,
-  float *region_mean,
-  float **city_median,
-  float **city_mean,
-  short int **city_highest,
-  short int **city_lowest,
-  float **city_standard_deviation,
+  int size_students,
+  float *region_median,
+  const float *region_mean,
+  short int *region_highest,
+  short int *region_lowest,
+  float *region_standard_deviation,
+  float *city_median,
+  float *city_mean,
+  short int *city_highest,
+  short int *city_lowest,
+  float *city_standard_deviation,
   float country_median,
   float country_mean,
   short int country_highest,
@@ -234,23 +149,32 @@ void pretty_print_output(
   float country_standard_deviation,
   double response_time
 ) {
-  float best_region[2], best_city[3]; // value = 0, region = 1, city = 2;
+  float best_region[2] = { -1, -1 }, best_city[3] = { -1, -1, -1}; // value = 0, region = 1, city = 2;
   for (int i = 0; i < size_regions; i++) {
     if (region_mean[i] > best_region[0]) {
       best_region[0] = region_mean[i];
       best_region[1] = (float) i;
     }
     for (int j = 0; j < size_cities; j++) {
-      if (city_mean[i][j] > best_city[0]) {
-        best_city[0] = city_mean[i][j];
+      int position = calculate_index(0, i, j, 0,size_regions, size_cities);
+      if (city_mean[position] > best_city[0]) {
+        best_city[0] = city_mean[position];
         best_city[1] = (float) i;
         best_city[2] = (float) j;
       }
-      printf("Reg %d - Cid %d: menor: %d, maior: %d, mediana: %.2f, média: %.2f e DP: %.2f\n", i, j, city_lowest[i][j],
-             city_highest[i][j], city_median[i][j], city_mean[i][j], city_standard_deviation[i][j]);
+
+      printf("Reg %d - Cid %d: menor: %d, maior: %d, mediana: %.2f, média: %.2f e DP: %.2f\n", i, j,
+             city_lowest[position],
+             city_highest[position], city_median[position], city_mean[position], city_standard_deviation[position]);
     }
     printf("\n\n");
   }
+
+  for(int i = 0; i < size_regions; i++) {
+    printf("Reg %d: menor: %d, maior: %d, mediana: %.2f, média: %.2f e DP: %.2f\n", i, region_lowest[i], region_highest[i], region_median[i], region_mean[i], region_standard_deviation[i]);
+  }
+  printf("\n\n");
+
   printf("Brasil: menor: %d, maior: %d, mediana %.2f, média: %.2f e DP: %.2f \n\n", country_lowest, country_highest,
          country_median, country_mean, country_standard_deviation);
 
@@ -265,12 +189,12 @@ int main() {
   double response_time;
   int seed, size_students, size_regions, size_cities;
   scanf("%d %d %d %d", &size_regions, &size_cities, &size_students, &seed);
-  short int ***students_grade = allocate_3d_array(size_regions, size_cities, size_students);
-  float **city_median = allocate_2d_array_float(size_regions, size_cities);
-  float **city_mean = allocate_2d_array_float(size_regions, size_cities);
-  short int **city_highest = allocate_2d_array(size_regions, size_cities);
-  short int **city_lowest = allocate_2d_array(size_regions, size_cities);
-  float **city_standard_deviation = allocate_2d_array_float(size_regions, size_cities);
+  short int *students_grade = malloc(sizeof(short int) * size_regions * size_cities * size_students);
+  float *city_median = malloc(sizeof(float *) * size_regions * size_cities);
+  float *city_mean = malloc(sizeof(float *) * size_regions * size_cities);
+  short int *city_highest = malloc(sizeof(short int *) * size_regions * size_cities);
+  short int *city_lowest = malloc(sizeof(short int *) * size_regions * size_cities);
+  float *city_standard_deviation = malloc(sizeof(float *) * size_regions * size_cities);
   float *region_median = (float *) malloc(sizeof(float) * size_regions);
   float *region_mean = (float *) malloc(sizeof(float) * size_regions);
   short int *region_highest = (short int *) malloc(sizeof(short int) * size_regions);
@@ -281,24 +205,14 @@ int main() {
   srand(seed);
 
   response_time = omp_get_wtime();
+
   for (int i = 0; i < size_regions; i++) {
     for (int j = 0; j < size_cities; j++) {
       for (int k = 0; k < size_students; k++) {
-        students_grade[i][j][k] = rand() % 100;
+        students_grade[calculate_index(i, j, k, size_regions, size_cities, size_students)] = rand() % 100;
       }
     }
   }
-//
-//  for (int i = 0; i < size_regions; i++) {
-//    printf("\nRegião %d\n", i);
-//    for (int j = 0; j < size_cities; j++) {
-//      printf("\n");
-//      for (int k = 0; k < size_students; k++) {
-//        printf("%d ", students_grade[i][j][k]);
-//      }
-//    }
-//  }
-
 
   calculate_city_stats(
     size_regions,
@@ -315,11 +229,8 @@ int main() {
   calculate_region_stats(
     size_regions,
     size_cities,
-    city_median,
-    city_mean,
-    city_highest,
-    city_lowest,
-    city_standard_deviation,
+    size_students,
+    students_grade,
     region_median,
     region_mean,
     region_highest,
@@ -329,11 +240,9 @@ int main() {
 
   calculate_country_stats(
     size_regions,
-    region_median,
-    region_mean,
-    region_highest,
-    region_lowest,
-    region_standard_deviation,
+    size_cities,
+    size_students,
+    students_grade,
     &country_median,
     &country_mean,
     &country_highest,
@@ -345,7 +254,12 @@ int main() {
   pretty_print_output(
     size_regions,
     size_cities,
+    size_students,
+    region_median,
     region_mean,
+    region_highest,
+    region_lowest,
+    region_standard_deviation,
     city_median,
     city_mean,
     city_highest,

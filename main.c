@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <omp.h>
 
 int compare_short(const void *a, const void *b) {
   short int int_a = *((short int *) a);
@@ -20,6 +21,7 @@ short int calculate_lowest_short(short int *linha, int tam) {
   }
   return menor;
 }
+
 
 short int calculate_highest_short(short int *linha, int tam) {
   short int maior = -1;
@@ -76,25 +78,6 @@ float calculate_median_float(float *linha, int tam) {
     mediana = (linha[tam / 2 - 1] + linha[tam / 2]) / 2;
   }
   return mediana;
-}
-
-int compare_float(const void *a, const void *b) {
-  float int_a = *((float *) a);
-  float int_b = *((float *) b);
-
-  if (int_a == int_b) return 0;
-  else if (int_a < int_b) return -1;
-  else return 1;
-}
-
-float calculate_lowest_float(float *linha, int tam) {
-  float menor = 101;
-  for (int i = 0; i < tam; i++) {
-    if (linha[i] < menor) {
-      menor = linha[i];
-    }
-  }
-  return menor;
 }
 
 float calculate_mean_float(float *linha, int tam) {
@@ -230,6 +213,7 @@ void print_float_matrix(float **matrix, int size_x, int size_y) {
 void pretty_print_output(
   int size_regions,
   int size_cities,
+  float *region_mean,
   float **city_median,
   float **city_mean,
   short int **city_highest,
@@ -239,10 +223,31 @@ void pretty_print_output(
   float country_mean,
   short int country_highest,
   short int country_lowest,
-  float country_standard_deviation
+  float country_standard_deviation,
+  double response_time
+
 ) {
-  for (int i = 0; i < size_regions; i++) {
-    for (int j = 0; j < size_cities; j++) {
+  float best_region[2], best_city[3]; // value = 0, region = 1, city = 2;
+  for (
+    int i = 0;
+    i < size_regions;
+    i++) {
+    if (region_mean[i] > best_region[0]) {
+      best_region[0] = region_mean[i];
+      best_region[1] = (float)
+        i;
+    }
+    for (
+      int j = 0;
+      j < size_cities;
+      j++) {
+      if (city_mean[i][j] > best_city[0]) {
+        best_city[0] = city_mean[i][j];
+        best_city[1] = (float)
+          i;
+        best_city[2] = (float)
+          j;
+      }
       printf("Reg %d - Cid %d: menor: %d, maior: %d, mediana: %.2f, média: %.2f e DP: %.2f\n", i, j, city_lowest[i][j],
              city_highest[i][j], city_median[i][j], city_mean[i][j], city_standard_deviation[i][j]);
     }
@@ -250,10 +255,16 @@ void pretty_print_output(
   }
   printf("Brasil: menor: %d, maior: %d, mediana %.2f, média: %.2f e DP: %.2f \n\n", country_lowest, country_highest,
          country_median, country_mean, country_standard_deviation);
+
+  printf("Melhor região: Região %0.f\n", best_region[1]);
+  printf("Melhor cidade: Região %0.f, Cidade %0.f\n\n", best_city[1], best_city[2]);
+  printf("Tempo de resposta sem considerar E/S, em segundos: %lf", response_time);
+
 }
 
 
 int main() {
+  double response_time;
   int seed, size_students, size_regions, size_cities;
   scanf("%d %d %d %d", &size_regions, &size_cities, &size_students, &seed);
   short int ***students_grade = allocate_3d_array(size_regions, size_cities, size_students);
@@ -271,6 +282,7 @@ int main() {
   short int country_highest, country_lowest;
   srand(seed);
 
+  response_time = omp_get_wtime();
   for (int i = 0; i < size_regions; i++) {
     for (int j = 0; j < size_cities; j++) {
       for (int k = 0; k < size_students; k++) {
@@ -288,6 +300,7 @@ int main() {
 //      }
 //    }
 //  }
+
 
   calculate_city_stats(
     size_regions,
@@ -330,19 +343,11 @@ int main() {
     &country_standard_deviation
   );
 
-//  printf("\nmediana");
-//  print_float_matrix(city_median, size_regions, size_cities);
-//  printf("\nmedia");
-//  print_float_matrix(city_mean, size_regions, size_cities);
-//  printf("\nstd");
-//  print_float_matrix(city_standard_deviation, size_regions, size_cities);
-//  printf("\nmaior");
-//  print_int_matrix(city_highest, size_regions, size_cities);
-//  printf("\nmenor");
-//  print_int_matrix(city_lowest, size_regions, size_cities);
+  response_time = omp_get_wtime() - response_time;
   pretty_print_output(
     size_regions,
     size_cities,
+    region_mean,
     city_median,
     city_mean,
     city_highest,
@@ -352,7 +357,8 @@ int main() {
     country_mean,
     country_highest,
     country_lowest,
-    country_standard_deviation
+    country_standard_deviation,
+    response_time
   );
 
   return 0;

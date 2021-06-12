@@ -43,6 +43,7 @@ void counting_sort(short int *array, int begin, int size) {
   for (int i = begin, j = 0; i < begin + size && j < size; i++, j++) {
     array[i] = ordered[j];
   }
+  free(ordered);
 }
 
 short int calculate_lowest_short(short int *array, int start) {
@@ -263,7 +264,7 @@ void pretty_print_output(
 
   printf("\nMelhor região: Região %0.f\n", best_region[1]);
   printf("Melhor cidade: Região %0.f, Cidade %0.f\n\n", best_city[1], best_city[2]);
-  printf("\nTempo de resposta sem considerar E/S, em segundos: %lfs\n", response_time);
+  printf("\nTempo de resposta sem considerar E/S, em segundos: %.3lfs\n", response_time);
 }
 
 
@@ -379,6 +380,21 @@ int main(int argc, char *const argv[]) {
     country_standard_deviation,
     response_time
   );
+
+  free(students_grade);
+
+  free(city_median);
+  free(city_mean);
+  free(city_standard_deviation);
+  free(city_highest);
+  free(city_lowest);
+
+  free(region_median);
+  free(region_mean);
+  free(region_standard_deviation);
+  free(region_highest);
+  free(region_lowest);
+
 
   return 0;
 }

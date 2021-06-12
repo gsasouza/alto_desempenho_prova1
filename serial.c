@@ -22,12 +22,12 @@ int calculate_country_size(int size_region, int size_city, int size_students) {
 
 void counting_sort(short int *array, int begin, int size) {
   short int *ordered = malloc(sizeof(short int) * size);
+  int i;
   unsigned int counting[RANGE]; // [0, 100] is the range of the grades 
 
   memset(counting, 0, sizeof(counting));
 
-  #pragma omp parallel for reduction(+: counting[:RANGE])
-  for (int i = begin; i < begin + size; i++) {
+  for (i = begin; i < begin + size; i++) {
     counting[array[i]] += 1;
   }
 
@@ -62,7 +62,10 @@ float calculate_median_short(short int *array, int start, int size) {
 double calculate_mean_short(const short int *array, int start, int size) {
   double sum = 0.0;
 
-  #pragma omp parallel for num_threads(T) reduction (+:sum)
+//  for (int i = start; i < start + size; i++) {
+//    sum += array[i];
+//  }
+// #pragma omp parallel for num_threads(T) reduction (+:sum)
   for (int i = start; i < start + size; i++) {
     sum = sum + array[i];
   }
@@ -73,9 +76,8 @@ double calculate_mean_short(const short int *array, int start, int size) {
 // sample standard deviation
 double calculate_standard_deviation_short(short int *array, int start, int size, double mean) {
   double dp = 0.0;
-  #pragma omp parallel for num_threads(T) reduction (+:dp)
   for (int i = start; i < start + size; i++) {
-    dp = dp + pow(array[i] - mean, 2);
+    dp += pow(array[i] - mean, 2);
   }
   return sqrt(dp / (double) (size - 1));
 }
@@ -91,37 +93,19 @@ void calculate_city_stats(
   short int *city_lowest,
   double *city_standard_deviation
 ) {
-  #pragma omp parallel for num_threads(T)
   for (int i = 0; i < size_regions; i++) {
-    #pragma omp parallel for num_threads(T) shared(students_grade, size_students, city_median, city_mean, city_highest, city_lowest, city_standard_deviation) schedule(static)
+    #pragma omp parallel for num_threads(T)
     for (int j = 0; j < size_cities; j++) {
       int position = calculate_index(0, i, j, 0, size_regions, size_cities);
       int city_start = calculate_index(i, j, 0, size_regions, size_cities, size_students);
-      #pragma omp parallel
-      {
-        #pragma omp single
-        {
-          #pragma omp task
-          {
-            counting_sort(students_grade, city_start, size_students); // sort each array slice (city)
-            city_median[position] = calculate_median_short(students_grade, city_start, size_students);
-            city_highest[position] = calculate_highest_short(students_grade, city_start, size_students);
-            city_lowest[position] = calculate_lowest_short(students_grade, city_start);
-          }
-          #pragma omp task
-          {
-            city_mean[position] = calculate_mean_short(students_grade, city_start, size_students);
+      counting_sort(students_grade, city_start, size_students); // sort each array slice (city)
 
-            city_standard_deviation[position] = calculate_standard_deviation_short(students_grade, city_start,
-                                                                                   size_students, city_mean[position]);
-          };
-        }
-      }
-
-
-
-
-
+      city_median[position] = calculate_median_short(students_grade, city_start, size_students);
+      city_mean[position] = calculate_mean_short(students_grade, city_start, size_students);
+      city_highest[position] = calculate_highest_short(students_grade, city_start, size_students);
+      city_lowest[position] = calculate_lowest_short(students_grade, city_start);
+      city_standard_deviation[position] = calculate_standard_deviation_short(students_grade, city_start,
+                                                                             size_students, city_mean[position]);
     }
   }
 }
@@ -137,30 +121,20 @@ void calculate_region_stats(
   short int *region_lowest,
   double *region_standard_deviation
 ) {
-  #pragma omp parallel for num_threads(T) shared(students_grade, region_median, region_mean, region_highest, region_lowest, region_standard_deviation)
+
+  #pragma omp parallel for num_threads(T) shared(students_grade, size_students, region_median, region_mean, region_highest, region_lowest, region_standard_deviation)
   for (int i = 0; i < size_regions; i++) {
     int region_start = calculate_index(i, 0, 0, size_regions, size_cities, size_students);
     int region_size = calculate_region_size(size_cities, size_students);
-    #pragma omp parallel
-    {
-      #pragma omp single
-      {
-        #pragma omp task
-        {
-          counting_sort(students_grade, region_start, region_size); // sort array slice (region)
 
-          region_median[i] = calculate_median_short(students_grade, region_start, region_size);
-          region_highest[i] = calculate_highest_short(students_grade, region_start, region_size);
-          region_lowest[i] = calculate_lowest_short(students_grade, region_start);
-        }
-        #pragma omp task
-        {
-          region_mean[i] = calculate_mean_short(students_grade, region_start, region_size);
-          region_standard_deviation[i] = calculate_standard_deviation_short(students_grade, region_start,
-                                                                            region_size, region_mean[i]);
-        }
-      }
-    }
+    counting_sort(students_grade, region_start, region_size); // sort array slice (region)
+
+    region_median[i] = calculate_median_short(students_grade, region_start, region_size);
+    region_mean[i] = calculate_mean_short(students_grade, region_start, region_size);
+    region_highest[i] = calculate_highest_short(students_grade, region_start, region_size);
+    region_lowest[i] = calculate_lowest_short(students_grade, region_start);
+    region_standard_deviation[i] = calculate_standard_deviation_short(students_grade, region_start,
+                                                                      region_size, region_mean[i]);
   }
 }
 
@@ -177,26 +151,17 @@ void calculate_country_stats(
 ) {
 
   int country_size = calculate_country_size(size_regions, size_cities, size_students);
-  #pragma omp parallel num_threads(T) firstprivate(students_grade) shared(country_size, country_median, country_mean, country_highest, country_lowest, country_standard_deviation)
-  {
-    #pragma omp single
-    {
-      #pragma omp task
-      {
-        counting_sort(students_grade, 0, country_size);
-        *country_median = calculate_median_short(students_grade, 0, country_size);
-        *country_highest = calculate_highest_short(students_grade, 0, country_size);
-        *country_lowest = calculate_lowest_short(students_grade, 0);
-      }
-      #pragma omp task
-      {
-        *country_mean = calculate_mean_short(students_grade, 0, country_size);
-        *country_standard_deviation = calculate_standard_deviation_short(students_grade, 0,
-                                                                         country_size, *country_mean);
-      };
-    }
-  }
 
+  counting_sort(students_grade, 0, country_size);
+
+  *country_mean = calculate_mean_short(students_grade, 0, country_size);
+
+  *country_median = calculate_median_short(students_grade, 0, country_size);
+
+  *country_highest = calculate_highest_short(students_grade, 0, country_size);
+  *country_lowest = calculate_lowest_short(students_grade, 0);
+  *country_standard_deviation = calculate_standard_deviation_short(students_grade, 0,
+                                                                   country_size, *country_mean);
 }
 
 float rounded(float x) {
@@ -293,6 +258,7 @@ int main(int argc, char *const argv[]) {
   short int country_highest, country_lowest;
 
   srand(seed);
+
 
 
   for (int i = 0; i < size_regions; i++) {

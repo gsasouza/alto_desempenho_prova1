@@ -26,7 +26,6 @@ void counting_sort(short int *array, int begin, int size) {
 
   memset(counting, 0, sizeof(counting));
 
-  #pragma omp parallel for reduction(+: counting[:RANGE])
   for (int i = begin; i < begin + size; i++) {
     counting[array[i]] += 1;
   }
@@ -118,11 +117,6 @@ void calculate_city_stats(
           };
         }
       }
-
-
-
-
-
     }
   }
 }
@@ -269,7 +263,6 @@ void pretty_print_output(
 
 
 int main(int argc, char *const argv[]) {
-//  omp_set_nested(1);
   double response_time;
   int seed, size_students, size_regions, size_cities;
 

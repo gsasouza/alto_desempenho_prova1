@@ -237,6 +237,28 @@ void pretty_print_output(
 }
 
 
+void calculate_counts_displs(int *send_counts, int *displs, int *count_subset, int comm_size, int total_count, int row_size) {
+  int worker_processes = (comm_size - 1);
+  int remainder = total_count % worker_processes;
+  int count_per_process = total_count / worker_processes;
+  int size_per_process = row_size * count_per_process;
+  int sum = 0;
+  displs[0] = 0;
+  send_counts[0] = 0;
+  count_subset[0] = 0;
+  for (int i = 1; i < comm_size; i++) {
+    send_counts[i] = size_per_process;
+    count_subset[i] = count_per_process;
+    if (remainder > 0) {
+      send_counts[i] += row_size;
+      count_subset[i] += 1;
+      remainder--;
+    }
+    displs[i] = sum;
+    sum += send_counts[i];
+  }
+}
+
 int main(int argc, char *const argv[]) {
   MPI_Init(NULL, NULL);
 
@@ -290,10 +312,15 @@ int main(int argc, char *const argv[]) {
         }
       }
     }
-    // divide chunks with multiples regions, in our implementation we need to ensure that cities and students are calculated together in same process
-    chunk_size = ceil(size_regions / (float) comm_size);
   }
 
+
+  int *displs = malloc(sizeof(int) * comm_size);
+  int *send_counts = malloc(sizeof(int) * comm_size);
+  int *size_subset = malloc(sizeof(int) * comm_size);
+  calculate_counts_displs(send_counts, displs, size_subset, comm_size, size_regions, size_cities * size_students * sizeof(int));
+
+  chunk_size = send_counts[rank];
   response_time = omp_get_wtime();
 
   /* broadcast calculated city, stundents and chunk size*/
@@ -301,12 +328,6 @@ int main(int argc, char *const argv[]) {
   MPI_Bcast(&size_regions, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&size_students, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&chunk_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  if (size_regions % comm_size != 0) {
-    printf("Número de processos deve ser multiplo do numero de regiões");
-    exit(0);
-    MPI_Finalize();
-  }
 
   students_grade_subset = malloc(sizeof(int) * chunk_size * size_cities * size_students);
 
@@ -322,126 +343,135 @@ int main(int argc, char *const argv[]) {
   region_highest_subset = (int *) malloc(sizeof(int) * chunk_size);
   region_lowest_subset = (int *) malloc(sizeof(int) * chunk_size);
 
+
+
   // scatter values to each process
-  MPI_Scatter(students_grade, chunk_size * size_students * size_cities, MPI_INT, students_grade_subset,
-              chunk_size * size_students * size_cities, MPI_INT, 0, MPI_COMM_WORLD);
 
-  // calculate values for each subset of data
-  calculate_city_stats(
-    chunk_size,
-    size_cities,
-    size_students,
-    students_grade_subset,
-    city_median_subset,
-    city_mean_subset,
-    city_highest_subset,
-    city_lowest_subset,
-    city_standard_deviation_subset
-  );
+  // print calculated send counts and displacements for each process
+  if (0 == rank) {
+    for (int i = 0; i < comm_size; i++) {
+      printf("sendcounts[%d] = %d\tdispls[%d] = %d\tsize[%d] = %d\n", i, send_counts[i], i, displs[i], i, size_subset[i]);
+    }
+  }
+  MPI_Scatterv(students_grade, send_counts, displs, MPI_INT, students_grade_subset,
+               chunk_size, MPI_INT, 0, MPI_COMM_WORLD);
 
-  // send back results data to root process
-  MPI_Gather(city_median_subset,
-             chunk_size * size_cities,
-             MPI_FLOAT,
-             city_median,
-             chunk_size * size_cities,
-             MPI_FLOAT,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(city_mean_subset,
-             chunk_size * size_cities,
-             MPI_DOUBLE,
-             city_mean,
-             chunk_size * size_cities,
-             MPI_DOUBLE,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(city_highest_subset,
-             chunk_size * size_cities,
-             MPI_INT,
-             city_highest,
-             chunk_size * size_cities,
-             MPI_INT,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(city_lowest_subset,
-             chunk_size * size_cities,
-             MPI_INT,
-             city_lowest,
-             chunk_size * size_cities,
-             MPI_INT,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(city_standard_deviation_subset,
-             chunk_size * size_cities,
-             MPI_DOUBLE,
-             city_standard_deviation,
-             chunk_size * size_cities,
-             MPI_DOUBLE,
-             0,
-             MPI_COMM_WORLD);
-
-  calculate_region_stats(
-    chunk_size,
-    size_cities,
-    size_students,
-    students_grade_subset,
-    region_median_subset,
-    region_mean_subset,
-    region_highest_subset,
-    region_lowest_subset,
-    region_standard_deviation_subset
-  );
-
-  // send back results data to root process
-  MPI_Gather(region_median_subset,
-             chunk_size,
-             MPI_FLOAT,
-             region_median,
-             chunk_size,
-             MPI_FLOAT,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(region_mean_subset,
-             chunk_size,
-             MPI_DOUBLE,
-             region_mean,
-             chunk_size,
-             MPI_DOUBLE,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(region_highest_subset,
-             chunk_size,
-             MPI_INT,
-             region_highest,
-             chunk_size,
-             MPI_INT,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(region_lowest_subset,
-             chunk_size,
-             MPI_INT,
-             region_lowest,
-             chunk_size,
-             MPI_INT,
-             0,
-             MPI_COMM_WORLD);
-
-  MPI_Gather(region_standard_deviation_subset,
-             chunk_size,
-             MPI_DOUBLE,
-             region_standard_deviation,
-             chunk_size,
-             MPI_DOUBLE,
-             0,
-             MPI_COMM_WORLD);
+//    // calculate values for each subset of data
+//    calculate_city_stats(
+//      chunk_size,
+//      size_cities,
+//      size_students,
+//      students_grade_subset,
+//      city_median_subset,
+//      city_mean_subset,
+//      city_highest_subset,
+//      city_lowest_subset,
+//      city_standard_deviation_subset
+//    );
+//
+//  // send back results data to root process
+//  MPI_Gather(city_median_subset,
+//             chunk_size * size_cities,
+//             MPI_FLOAT,
+//             city_median,
+//             chunk_size * size_cities,
+//             MPI_FLOAT,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(city_mean_subset,
+//             chunk_size * size_cities,
+//             MPI_DOUBLE,
+//             city_mean,
+//             chunk_size * size_cities,
+//             MPI_DOUBLE,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(city_highest_subset,
+//             chunk_size * size_cities,
+//             MPI_INT,
+//             city_highest,
+//             chunk_size * size_cities,
+//             MPI_INT,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(city_lowest_subset,
+//             chunk_size * size_cities,
+//             MPI_INT,
+//             city_lowest,
+//             chunk_size * size_cities,
+//             MPI_INT,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(city_standard_deviation_subset,
+//             chunk_size * size_cities,
+//             MPI_DOUBLE,
+//             city_standard_deviation,
+//             chunk_size * size_cities,
+//             MPI_DOUBLE,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  calculate_region_stats(
+//    chunk_size,
+//    size_cities,
+//    size_students,
+//    students_grade_subset,
+//    region_median_subset,
+//    region_mean_subset,
+//    region_highest_subset,
+//    region_lowest_subset,
+//    region_standard_deviation_subset
+//  );
+//
+//  // send back results data to root process
+//  MPI_Gather(region_median_subset,
+//             chunk_size,
+//             MPI_FLOAT,
+//             region_median,
+//             chunk_size,
+//             MPI_FLOAT,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(region_mean_subset,
+//             chunk_size,
+//             MPI_DOUBLE,
+//             region_mean,
+//             chunk_size,
+//             MPI_DOUBLE,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(region_highest_subset,
+//             chunk_size,
+//             MPI_INT,
+//             region_highest,
+//             chunk_size,
+//             MPI_INT,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(region_lowest_subset,
+//             chunk_size,
+//             MPI_INT,
+//             region_lowest,
+//             chunk_size,
+//             MPI_INT,
+//             0,
+//             MPI_COMM_WORLD);
+//
+//  MPI_Gather(region_standard_deviation_subset,
+//             chunk_size,
+//             MPI_DOUBLE,
+//             region_standard_deviation,
+//             chunk_size,
+//             MPI_DOUBLE,
+//             0,
+//             MPI_COMM_WORLD);
 
   // calculate country status in root process because we need the entire data set to be calculated at same time
   if (rank == 0) {
@@ -460,27 +490,27 @@ int main(int argc, char *const argv[]) {
 
     response_time = omp_get_wtime() - response_time;
     // print results
-    pretty_print_output(
-      size_regions,
-      size_cities,
-      size_students,
-      region_median,
-      region_mean,
-      region_highest,
-      region_lowest,
-      region_standard_deviation,
-      city_median,
-      city_mean,
-      city_highest,
-      city_lowest,
-      city_standard_deviation,
-      country_median,
-      country_mean,
-      country_highest,
-      country_lowest,
-      country_standard_deviation,
-      response_time
-    );
+//    pretty_print_output(
+//      size_regions,
+//      size_cities,
+//      size_students,
+//      region_median,
+//      region_mean,
+//      region_highest,
+//      region_lowest,
+//      region_standard_deviation,
+//      city_median,
+//      city_mean,
+//      city_highest,
+//      city_lowest,
+//      city_standard_deviation,
+//      country_median,
+//      country_mean,
+//      country_highest,
+//      country_lowest,
+//      country_standard_deviation,
+//      response_time
+//    );
 
 //    free(students_grade);
 //

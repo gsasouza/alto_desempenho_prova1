@@ -14,4 +14,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fopenmp")
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(prova_1 main.c)
+add_executable(prova_1 studentspar_mpi.c)

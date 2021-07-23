@@ -189,41 +189,41 @@ void pretty_print_output(
 ) {
 
   float best_region[2] = {-1, -1}, best_city[3] = {-1, -1, -1}; // value = 0, region = 1, city = 2;
-  for (int i = 0; i < size_regions; i++) {
-    if (region_mean[i] > best_region[0]) {
-      best_region[0] = region_mean[i];
-      best_region[1] = (float) i;
-    }
-    for (int j = 0; j < size_cities; j++) {
-      int position = calculate_index(0, i, j, 0, size_regions, size_cities);
-      if (city_mean[position] > best_city[0]) {
-        best_city[0] = city_mean[position];
-        best_city[1] = (float) i;
-        best_city[2] = (float) j;
-      }
+//  for (int i = 0; i < size_regions; i++) {
+//    if (region_mean[i] > best_region[0]) {
+//      best_region[0] = region_mean[i];
+//      best_region[1] = (float) i;
+//    }
+//    for (int j = 0; j < size_cities; j++) {
+//      int position = calculate_index(0, i, j, 0, size_regions, size_cities);
+//      if (city_mean[position] > best_city[0]) {
+//        best_city[0] = city_mean[position];
+//        best_city[1] = (float) i;
+//        best_city[2] = (float) j;
+//      }
+//
+//      printf("Reg %d - Cid %d: menor: %d, maior: %d, mediana: %.2f, média: %.2lf e DP: %.2lf\n", i, j,
+//             city_lowest[position],
+//             city_highest[position], rounded(city_median[position]), rounded(city_mean[position]),
+//             rounded(city_standard_deviation[position]));
+//    }
+//
+//    printf("\n\n");
+//  }
 
-      printf("Reg %d - Cid %d: menor: %d, maior: %d, mediana: %.2f, média: %.2lf e DP: %.2lf\n", i, j,
-             city_lowest[position],
-             city_highest[position], rounded(city_median[position]), rounded(city_mean[position]),
-             rounded(city_standard_deviation[position]));
-    }
-
-    printf("\n\n");
-  }
-
-  for (int i = 0; i < size_regions; i++) {
-    printf("Reg %d: menor: %d, maior: %d, mediana: %.2f, média: %.2lf e DP: %.2lf\n", i, region_lowest[i],
-           region_highest[i], rounded(region_median[i]), rounded(region_mean[i]),
-           rounded(region_standard_deviation[i]));
-  }
-
-  printf("\n\n");
-
-  printf("Brasil: menor: %d, maior: %d, mediana %.2f, média: %.2lf e DP: %.2lf \n\n", country_lowest, country_highest,
-         rounded(country_median), rounded(country_mean), rounded(country_standard_deviation));
-
-  printf("\nMelhor região: Região %0.f\n", best_region[1]);
-  printf("Melhor cidade: Região %0.f, Cidade %0.f\n\n", best_city[1], best_city[2]);
+//  for (int i = 0; i < size_regions; i++) {
+//    printf("Reg %d: menor: %d, maior: %d, mediana: %.2f, média: %.2lf e DP: %.2lf\n", i, region_lowest[i],
+//           region_highest[i], rounded(region_median[i]), rounded(region_mean[i]),
+//           rounded(region_standard_deviation[i]));
+//  }
+//
+//  printf("\n\n");
+//
+//  printf("Brasil: menor: %d, maior: %d, mediana %.2f, média: %.2lf e DP: %.2lf \n\n", country_lowest, country_highest,
+//         rounded(country_median), rounded(country_mean), rounded(country_standard_deviation));
+//
+//  printf("\nMelhor região: Região %0.f\n", best_region[1]);
+//  printf("Melhor cidade: Região %0.f, Cidade %0.f\n\n", best_city[1], best_city[2]);
   printf("\nTempo de resposta sem considerar E/S, em segundos: %.3lfs\n", response_time);
 }
 

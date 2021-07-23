@@ -1,3 +1,12 @@
+/**********************************************************************/
+/*Grupo 5 -> Questão 4 PB1 CAD 2021
+/*Caio Augusto Duarte Basso 	- NUSP 10801173
+/*Carla Nunes da Cruz       	- NUSP 8479343
+/*Gabriel Garcia Lorencetti     	- NUSP 10691891
+/*Gabriel Santos Souza - NUSP 11208176
+/*Giovana Daniele da Silva    	- NUSP 10692224
+/**********************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

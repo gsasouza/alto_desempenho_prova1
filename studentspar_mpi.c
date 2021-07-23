@@ -237,7 +237,8 @@ void pretty_print_output(
 }
 
 
-void calculate_counts_displs(int *send_counts, int *displs, int *count_subset, int comm_size, int total_count, int row_size) {
+void calculate_counts_displs(int *send_counts, int *displs, int *count_subset, int comm_size, int total_count,
+                             int row_size) {
   int worker_processes = (comm_size - 1);
   int remainder = total_count % worker_processes;
   int count_per_process = total_count / worker_processes;
@@ -315,19 +316,19 @@ int main(int argc, char *const argv[]) {
   }
 
 
-  int *displs = malloc(sizeof(int) * comm_size);
-  int *send_counts = malloc(sizeof(int) * comm_size);
-  int *size_subset = malloc(sizeof(int) * comm_size);
-  calculate_counts_displs(send_counts, displs, size_subset, comm_size, size_regions, size_cities * size_students * sizeof(int));
-
-  chunk_size = send_counts[rank];
-  response_time = omp_get_wtime();
-
-  /* broadcast calculated city, stundents and chunk size*/
   MPI_Bcast(&size_cities, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&size_regions, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&size_students, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&chunk_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  int *displs = malloc(sizeof(int) * comm_size);
+  int *send_counts = malloc(sizeof(int) * comm_size);
+  int *size_subset = malloc(sizeof(int) * comm_size);
+  calculate_counts_displs(send_counts, displs, size_subset, comm_size, size_regions,
+                          size_cities * size_students);
+
+  chunk_size = size_subset[rank];
+  response_time = omp_get_wtime();
+  printf("%d - %d \n", rank, chunk_size);
 
   students_grade_subset = malloc(sizeof(int) * chunk_size * size_cities * size_students);
 
@@ -343,137 +344,18 @@ int main(int argc, char *const argv[]) {
   region_highest_subset = (int *) malloc(sizeof(int) * chunk_size);
   region_lowest_subset = (int *) malloc(sizeof(int) * chunk_size);
 
-
-
-  // scatter values to each process
-
   // print calculated send counts and displacements for each process
   if (0 == rank) {
     for (int i = 0; i < comm_size; i++) {
-      printf("sendcounts[%d] = %d\tdispls[%d] = %d\tsize[%d] = %d\n", i, send_counts[i], i, displs[i], i, size_subset[i]);
+
     }
   }
+
+
+  // scatter values to each process
   MPI_Scatterv(students_grade, send_counts, displs, MPI_INT, students_grade_subset,
-               chunk_size, MPI_INT, 0, MPI_COMM_WORLD);
+               send_counts[rank], MPI_INT, 0, MPI_COMM_WORLD);
 
-//    // calculate values for each subset of data
-//    calculate_city_stats(
-//      chunk_size,
-//      size_cities,
-//      size_students,
-//      students_grade_subset,
-//      city_median_subset,
-//      city_mean_subset,
-//      city_highest_subset,
-//      city_lowest_subset,
-//      city_standard_deviation_subset
-//    );
-//
-//  // send back results data to root process
-//  MPI_Gather(city_median_subset,
-//             chunk_size * size_cities,
-//             MPI_FLOAT,
-//             city_median,
-//             chunk_size * size_cities,
-//             MPI_FLOAT,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(city_mean_subset,
-//             chunk_size * size_cities,
-//             MPI_DOUBLE,
-//             city_mean,
-//             chunk_size * size_cities,
-//             MPI_DOUBLE,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(city_highest_subset,
-//             chunk_size * size_cities,
-//             MPI_INT,
-//             city_highest,
-//             chunk_size * size_cities,
-//             MPI_INT,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(city_lowest_subset,
-//             chunk_size * size_cities,
-//             MPI_INT,
-//             city_lowest,
-//             chunk_size * size_cities,
-//             MPI_INT,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(city_standard_deviation_subset,
-//             chunk_size * size_cities,
-//             MPI_DOUBLE,
-//             city_standard_deviation,
-//             chunk_size * size_cities,
-//             MPI_DOUBLE,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  calculate_region_stats(
-//    chunk_size,
-//    size_cities,
-//    size_students,
-//    students_grade_subset,
-//    region_median_subset,
-//    region_mean_subset,
-//    region_highest_subset,
-//    region_lowest_subset,
-//    region_standard_deviation_subset
-//  );
-//
-//  // send back results data to root process
-//  MPI_Gather(region_median_subset,
-//             chunk_size,
-//             MPI_FLOAT,
-//             region_median,
-//             chunk_size,
-//             MPI_FLOAT,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(region_mean_subset,
-//             chunk_size,
-//             MPI_DOUBLE,
-//             region_mean,
-//             chunk_size,
-//             MPI_DOUBLE,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(region_highest_subset,
-//             chunk_size,
-//             MPI_INT,
-//             region_highest,
-//             chunk_size,
-//             MPI_INT,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(region_lowest_subset,
-//             chunk_size,
-//             MPI_INT,
-//             region_lowest,
-//             chunk_size,
-//             MPI_INT,
-//             0,
-//             MPI_COMM_WORLD);
-//
-//  MPI_Gather(region_standard_deviation_subset,
-//             chunk_size,
-//             MPI_DOUBLE,
-//             region_standard_deviation,
-//             chunk_size,
-//             MPI_DOUBLE,
-//             0,
-//             MPI_COMM_WORLD);
-
-  // calculate country status in root process because we need the entire data set to be calculated at same time
   if (rank == 0) {
     calculate_country_stats(
       size_regions,
@@ -487,30 +369,165 @@ int main(int argc, char *const argv[]) {
       &country_standard_deviation
     );
 
+  } else {
+    calculate_city_stats(
+      chunk_size,
+      size_cities,
+      size_students,
+      students_grade_subset,
+      city_median_subset,
+      city_mean_subset,
+      city_highest_subset,
+      city_lowest_subset,
+      city_standard_deviation_subset
+    );
+
+    calculate_region_stats(
+      chunk_size,
+      size_cities,
+      size_students,
+      students_grade_subset,
+      region_median_subset,
+      region_mean_subset,
+      region_highest_subset,
+      region_lowest_subset,
+      region_standard_deviation_subset
+    );
+  }
+
+  calculate_counts_displs(send_counts, displs, size_subset, comm_size, size_regions,
+                          chunk_size * size_students);
+
+//
+//  MPI_Gatherv(
+//    city_median_subset,
+//    chunk_size * size_cities,
+//    MPI_FLOAT,
+//    city_median,
+//    chunk_size * size_cities,
+//    MPI_FLOAT,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    city_mean_subset,
+//    chunk_size * size_cities,
+//    MPI_DOUBLE,
+//    city_mean,
+//    chunk_size * size_cities,
+//    MPI_DOUBLE,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    city_highest_subset,
+//    chunk_size * size_cities,
+//    MPI_INT,
+//    city_highest,
+//    chunk_size * size_cities,
+//    MPI_INT,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    city_lowest_subset,
+//    chunk_size * size_cities,
+//    MPI_INT,
+//    city_lowest,
+//    chunk_size * size_cities,
+//    MPI_INT,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    city_standard_deviation_subset,
+//    chunk_size * size_cities,
+//    MPI_DOUBLE,
+//    city_standard_deviation,
+//    chunk_size * size_cities,
+//    MPI_DOUBLE,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    region_median_subset,
+//    chunk_size,
+//    MPI_FLOAT,
+//    region_median,
+//    chunk_size,
+//    MPI_FLOAT,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    region_mean_subset,
+//    chunk_size,
+//    MPI_DOUBLE,
+//    region_mean,
+//    chunk_size,
+//    MPI_DOUBLE,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    region_highest_subset,
+//    chunk_size,
+//    MPI_INT,
+//    region_highest,
+//    chunk_size,
+//    MPI_INT,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    region_lowest_subset,
+//    chunk_size,
+//    MPI_INT,
+//    region_lowest,
+//    chunk_size,
+//    MPI_INT,
+//    0,
+//    MPI_COMM_WORLD);
+//
+//  MPI_Gather(
+//    region_standard_deviation_subset,
+//    chunk_size,
+//    MPI_DOUBLE,
+//    region_standard_deviation,
+//    chunk_size,
+//    MPI_DOUBLE,
+//    0,
+//    MPI_COMM_WORLD);
+
+  // calculate country status in root process because we need the entire data set to be calculated at same time
+  if (rank == 0) {
+
 
     response_time = omp_get_wtime() - response_time;
+    printf("%f", response_time);
+
     // print results
-//    pretty_print_output(
-//      size_regions,
-//      size_cities,
-//      size_students,
-//      region_median,
-//      region_mean,
-//      region_highest,
-//      region_lowest,
-//      region_standard_deviation,
-//      city_median,
-//      city_mean,
-//      city_highest,
-//      city_lowest,
-//      city_standard_deviation,
-//      country_median,
-//      country_mean,
-//      country_highest,
-//      country_lowest,
-//      country_standard_deviation,
-//      response_time
-//    );
+    pretty_print_output(
+      size_regions,
+      size_cities,
+      size_students,
+      region_median,
+      region_mean,
+      region_highest,
+      region_lowest,
+      region_standard_deviation,
+      city_median,
+      city_mean,
+      city_highest,
+      city_lowest,
+      city_standard_deviation,
+      country_median,
+      country_mean,
+      country_highest,
+      country_lowest,
+      country_standard_deviation,
+      response_time
+    );
 
 //    free(students_grade);
 //

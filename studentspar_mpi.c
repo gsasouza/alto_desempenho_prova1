@@ -179,10 +179,15 @@ void calculate_country_stats(
 
 }
 
-float rounded(float x) {
+float roundedF(float x) {
   float rounded = (int) (x * 100 + .5);
 
   return (float) rounded / 100;
+}
+double roundedD(double x) {
+  double rounded = (int) (x * 100 + .5);
+
+  return (double) rounded / 100;
 }
 
 void pretty_print_output(
@@ -223,8 +228,8 @@ void pretty_print_output(
 
       printf("Reg %d - Cid %d: menor: %d, maior: %d, mediana: %.2f, média: %.2lf e DP: %.2lf\n", i, j,
              city_lowest[position],
-             city_highest[position], rounded(city_median[position]), rounded(city_mean[position]),
-             rounded(city_standard_deviation[position]));
+             city_highest[position], roundedF(city_median[position]), roundedD(city_mean[position]),
+             roundedD(city_standard_deviation[position]));
     }
 
     printf("\n\n");
@@ -232,14 +237,14 @@ void pretty_print_output(
 
   for (int i = 0; i < size_regions; i++) {
     printf("Reg %d: menor: %d, maior: %d, mediana: %.2f, média: %.2lf e DP: %.2lf\n", i, region_lowest[i],
-           region_highest[i], rounded(region_median[i]), rounded(region_mean[i]),
-           rounded(region_standard_deviation[i]));
+           region_highest[i], roundedF(region_median[i]), roundedD(region_mean[i]),
+           roundedD(region_standard_deviation[i]));
   }
 
   printf("\n\n");
 
-  printf("Brasil: menor: %d, maior: %d, mediana %.2f, média: %.2lf e DP: %.2lf \n\n", country_lowest, country_highest,
-         rounded(country_median), rounded(country_mean), rounded(country_standard_deviation));
+  printf("Brasil: menor: %d, maior: %d, mediana %.2f, média: %.2lf e DP: %.2lf\n\n", country_lowest, country_highest,
+         roundedF(country_median), roundedD(country_mean), roundedD(country_standard_deviation));
 
   printf("\nMelhor região: Região %0.f\n", best_region[1]);
   printf("Melhor cidade: Região %0.f, Cidade %0.f\n\n", best_city[1], best_city[2]);
